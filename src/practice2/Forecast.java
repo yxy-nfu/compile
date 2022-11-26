@@ -66,6 +66,31 @@ public class Forecast {
             follow[i] = Follow(not_terminator.charAt(i), first, terminator, not_terminator, grammar);
             System.out.println("Follow(" + not_terminator.charAt(i) + "):" + follow[i]);
         }
+        //填充表格
+        for (int i = 1; i < forecast.length; i++) {
+            for (int n = 0; n < first[i - 1].length(); n++) {
+                int ch = first[i - 1].charAt(n);
+                int index=x.indexOf(ch);
+                for (String s : grammar) {
+                    if (String.valueOf(s.charAt(0)).equals(forecast[i][0]) &&
+                            s.charAt(3) == ch) {
+                        forecast[i][index + 1] = s;
+                    }
+                }
+            }
+            if (first[i - 1].contains("ε")) {
+                int m = 0;
+                while (m < follow[i - 1].length()) {
+                    int index = x.indexOf(follow[i - 1].charAt(m));
+                    if (forecast[i][index + 1].equals("")) {
+                        forecast[i][index + 1] = not_terminator.charAt(i - 1) + "->ε";
+                    }
+                    m++;
+                }
+            }
+        }
+
+
         show(forecast);
 
         return forecast;
@@ -151,13 +176,12 @@ public class Forecast {
             }
         }
         //使用HashSet过滤重复值
-        HashSet<Character> hashSet=new HashSet<>();
-        for(int i=0;i<str.length();i++){
-            hashSet.add( str.toString().charAt(i));
+        HashSet<Character> hashSet = new HashSet<>();
+        for (int i = 0; i < str.length(); i++) {
+            hashSet.add(str.toString().charAt(i));
         }
-        str.delete(0,str.length());
-        for(char c:hashSet)
-        {
+        str.delete(0, str.length());
+        for (char c : hashSet) {
             str.append(c);
         }
         return str.toString();
