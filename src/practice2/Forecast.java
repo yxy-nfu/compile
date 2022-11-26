@@ -2,6 +2,7 @@ package practice2;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.HashSet;
 import java.util.Scanner;
 
 public class Forecast {
@@ -23,7 +24,7 @@ public class Forecast {
     public static String[][] initForecastForm() {
         //初始化一个预测分析表,xy表示行和列
         String x = "+-*/()i#";
-        String y = "ETGFSE";
+        String y = "EGTSF";
         String[][] forecast = new String[6][9];
         for (int i = 0; i < forecast.length; i++)
             for (int j = 0; j < forecast[0].length; j++) {
@@ -48,18 +49,23 @@ public class Forecast {
         grammar[5] = "S->*FS";
         grammar[6] = "S->/FS";
         grammar[7] = "S->ε";
-        grammar[8] = "F->(E)|i";
+        grammar[8] = "F->(E)";
         grammar[9] = "F->i";
 
         String terminator = "+-*/()iε";
         String not_terminator = "EGTSF";
-        //求出所有First集存储在字符数组中
+        //求出所有First集存储在字符串数组中
         String[] first = new String[not_terminator.length()];
         for (int i = 0; i < not_terminator.length(); i++) {
             first[i] = First(not_terminator.charAt(i), terminator, grammar);
             System.out.println("First(" + not_terminator.charAt(i) + "):" + first[i]);
         }
-
+        //求出所有Follow集存储在字符串数组中
+        String[] follow = new String[not_terminator.length()];
+        for (int i = 0; i < not_terminator.length(); i++) {
+            follow[i] = Follow(not_terminator.charAt(i), first, terminator, not_terminator, grammar);
+            System.out.println("Follow(" + not_terminator.charAt(i) + "):" + follow[i]);
+        }
         show(forecast);
 
         return forecast;
@@ -102,7 +108,7 @@ public class Forecast {
                     while (tempString.contains("ε")) {
                         i++;
                         tempString = tempString.replace("ε", "");
-                        if (s.charAt(i) == '|' || s.charAt(i) == '\"') {
+                        if (i >= s.length()) {
                             tempString = tempString + "ε";
                         } else {
                             tempString = tempString + First(s.charAt(i), terminator, grammar);
@@ -111,6 +117,48 @@ public class Forecast {
                     str.append(tempString);
                 }
             }
+        }
+        return str.toString();
+    }
+
+    //求Follow集
+    public static String Follow(char ch, String[] first, String terminator, String not_terminator, String[] grammar) {
+        StringBuilder str = new StringBuilder();
+        if (ch == 'E') {
+            str.append("#");
+        } //置"#"于开始符号的Follow集中
+        for (String value : grammar) {
+            int index = value.indexOf(ch);
+            if (index > 3) {
+                index++;
+                //该符号为文法结尾
+                if (index >= value.length()) {
+                    str.append(Follow(value.charAt(0), first, terminator, not_terminator, grammar));
+                } else {
+                    //该符号后面还有符号
+                    int index1 = terminator.indexOf(value.charAt(index));
+                    if (index1 >= 0) {
+                        str.append(value.charAt(index1));
+                    }
+                    int index0 = not_terminator.indexOf(value.charAt(index));
+                    if (index0 >= 0 && first[index0].contains("ε")) {
+                        str.append(first[index0].replace("ε", ""));
+                        str.append(Follow(value.charAt(0), first, terminator, not_terminator, grammar));
+                    } else if (index0 >= 0) {
+                        str.append(first[index0]);
+                    }
+                }
+            }
+        }
+        //使用HashSet过滤重复值
+        HashSet<Character> hashSet=new HashSet<>();
+        for(int i=0;i<str.length();i++){
+            hashSet.add( str.toString().charAt(i));
+        }
+        str.delete(0,str.length());
+        for(char c:hashSet)
+        {
+            str.append(c);
         }
         return str.toString();
     }
