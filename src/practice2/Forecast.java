@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashSet;
 import java.util.Scanner;
+import java.util.Stack;
 
 public class Forecast {
     public static void main(String[] args) {
@@ -12,15 +13,82 @@ public class Forecast {
             String[][] form = initForecastForm();
             while (scanner.hasNextLine()) {
                 String expression = scanner.nextLine();
-
+                processExpression(form, expression);
 
             }
         } catch (FileNotFoundException e) {
+            System.out.println("未找到文件");
             e.printStackTrace();
+        }
+    }
+
+    public static void processExpression(String[][] forecast, String expression) {
+        StringBuilder stringBuilder0 = new StringBuilder();
+        for (int i = 1; i < forecast.length; i++) {
+            stringBuilder0.append(forecast[i][0]);
+        }
+        StringBuilder stringBuilder1 = new StringBuilder();
+        for (int i = 1; i < forecast[0].length; i++) {
+            stringBuilder1.append(forecast[0][i]);
+        }
+        //获得Vn和Vt
+        String notTerminator = stringBuilder0.toString();
+        String terminator = stringBuilder1.toString();
+        Stack<Character> characterStack = new Stack<>();
+        StringBuilder stackStr = new StringBuilder("#E"); //记录栈内符号初态
+        characterStack.push('#');
+        characterStack.push('E');
+        int step = 1; //记录步骤
+        String remainderedStr=expression;
+        System.out.println("步骤\t   分析栈\t   剩余输入串\t   所用产生式");
+        System.out.println(" " + step + "\t   " + stackStr + "\t      " + remainderedStr);
+        for (int i = 0; i < expression.length() - 1; ) {
+            if (terminator.contains(String.valueOf(characterStack.peek()))) {
+                if (characterStack.peek() == expression.charAt(i)) {
+                    if (characterStack.peek() == '#') {
+                        System.out.println("识别成功");
+                        break;
+                    } else {
+                        i++;
+                        step++;
+                        characterStack.pop();
+                        stackStr = new StringBuilder(stackStr.substring(0, stackStr.length() - 1));
+                        remainderedStr = remainderedStr.substring(1);
+                        System.out.println(" " + step + "\t   " + stackStr+ "\t      " + remainderedStr);
+                    }
+                } else {
+                    System.out.println("Error");
+                    break;
+                }
+            } else {
+                int y = terminator.indexOf(expression.charAt(i)) + 1;
+                int x = notTerminator.indexOf(characterStack.peek()) + 1;
+                if (forecast[x][y].equals("error ")) {
+                    System.out.println("Error");
+                    break;
+                } else if (forecast[x][y].contains("ε")){
+                    step++;
+                    characterStack.pop();
+                    stackStr=new StringBuilder(stackStr.substring(0,stackStr.length()-1));
+                    System.out.println(" " + step + "\t   " + stackStr + "\t      " + remainderedStr +
+                            "\t  " + forecast[x][y]);
+                } else {
+                    step++;
+                    characterStack.pop();
+                    stackStr = new StringBuilder(stackStr.substring(0, stackStr.length() - 1));
+                    for (int j = forecast[x][y].length() - 1; j > 2; j--) {
+                        characterStack.push(forecast[x][y].charAt(j));
+                        stackStr.append(forecast[x][y].charAt(j));
+                    }
+                    System.out.println(" " + step + "\t   " + stackStr + "\t      " + remainderedStr +
+                            "\t  " + forecast[x][y]);
+                }
+            }
         }
 
     }
 
+    //构造预测分析表
     public static String[][] initForecastForm() {
         //初始化一个预测分析表,xy表示行和列
         String x = "+-*/()i#";
@@ -68,34 +136,43 @@ public class Forecast {
         }
         //填充表格
         for (int i = 1; i < forecast.length; i++) {
-            for (int n = 0; n < first[i - 1].length(); n++) {
-                int ch = first[i - 1].charAt(n);
-                int index=x.indexOf(ch);
-                for (String s : grammar) {
-                    if (String.valueOf(s.charAt(0)).equals(forecast[i][0]) &&
-                            s.charAt(3) == ch) {
-                        forecast[i][index + 1] = s;
+            for (int j = 1; j < forecast[0].length; j++) {
+                if (first[i - 1].contains(forecast[0][j])) {
+                    boolean sign = true;
+                    for (String value : grammar) {
+                        if (String.valueOf(value.charAt(0)).equals(forecast[i][0])) {
+                            if (String.valueOf(value.charAt(3)).equals(forecast[0][j])) {
+                                forecast[i][j] = value;
+                                sign = false;
+                            }
+                        }
                     }
-                }
-            }
-            if (first[i - 1].contains("ε")) {
-                int m = 0;
-                while (m < follow[i - 1].length()) {
-                    int index = x.indexOf(follow[i - 1].charAt(m));
-                    if (forecast[i][index + 1].equals("")) {
-                        forecast[i][index + 1] = not_terminator.charAt(i - 1) + "->ε";
+                    if (sign) {
+                        for (String value : grammar) {
+                            if (String.valueOf(value.charAt(0)).equals(forecast[i][0])) {
+                                forecast[i][j] = value;
+                            }
+                        }
                     }
-                    m++;
+                } else if (first[i - 1].contains("ε")) {
+                    if (follow[i - 1].contains(forecast[0][j]) && forecast[i][j].equals("")) {
+                        forecast[i][j] = forecast[i][0] + " ->ε ";
+                    }
                 }
             }
         }
-
-
+        for (int i = 1; i < forecast.length; i++) {
+            for (int j = 1; j < forecast[0].length; j++) {
+                if (forecast[i][j].equals("")) {
+                    forecast[i][j] = "error ";
+                }
+            }
+        }
         show(forecast);
-
         return forecast;
     }
 
+    //输出预测分析表
     public static void show(String[][] forecast) {
         System.out.print("     ");
         for (int i = 1; i < forecast[0].length; i++) {
@@ -147,7 +224,8 @@ public class Forecast {
     }
 
     //求Follow集
-    public static String Follow(char ch, String[] first, String terminator, String not_terminator, String[] grammar) {
+    public static String Follow(char ch, String[] first, String terminator, String not_terminator, String[]
+            grammar) {
         StringBuilder str = new StringBuilder();
         if (ch == 'E') {
             str.append("#");
@@ -186,6 +264,5 @@ public class Forecast {
         }
         return str.toString();
     }
-
 
 }
